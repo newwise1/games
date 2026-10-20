@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="modulepreload" crossorigin href="./assets/BPECfwze.js">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Детективные криптограммы</title>
+  <!-- Пустая иконка нарочно. Без неё браузер просит /favicon.ico, получает 404,
+       и ломатель приносит эту ошибку в каждом отчёте. Шум в отчёте учит
+       не читать отчёт. -->
+  <link rel="icon" href="data:,">
+  <!-- Картинки главного экрана — в предзагрузку. Без неё они просились только
+       после разбора всего бандла (0,7 с на телефоне, где сеть в это время
+       простаивает), и «время до интерактива» (ИНВ-21) перевалило за порог 5 с
+       после ассетов 013. Phaser грузит их элементом img (main.js,
+       loader.imageLoadType), и браузер отдаёт уже скачанное, а не качает
+       второй раз. Список держать вровень с НУЖНО.main в src/стиль/арт.js и
+       src/стиль/кнопки.js — сверяет tests/открытие.mjs: кнопки Ч1 (025) без
+       предзагрузки просились после бандла и стоили 0,2 с сверх порога.
+       ОЧЕРЕДЬ: СНАЧАЛА БАНДЛ, ПОТОМ КАРТИНКИ (028). Пущенные разом, 170 КБ
+       картинок делили канал с бандлом, и он приходил на 0,8 с позже; а после
+       бандла сеть ещё секунду стоит, пока телефон его разбирает. Поэтому
+       предзагрузка выключена (media="not all") и включается скриптом ниже,
+       как только бандл скачан, — картинки едут, пока он разбирается. Не
+       сработал скрипт — Phaser попросит их сам, просто позже. -->
+  <link rel="preload" as="image" href="./assets/1VmBwW0j.png" media="not all" data-после-бандла>
+  <link rel="preload" as="image" href="./assets/D-H_c1Ym.png" media="not all" data-после-бандла>
+  <link rel="preload" as="image" href="./assets/BTq64Yrj.png" media="not all" data-после-бандла>
+  <link rel="preload" as="image" href="./assets/B4kw_efo.png" media="not all" data-после-бандла>
+  <link rel="preload" as="image" href="./assets/Dah3iMkJ.png" media="not all" data-после-бандла>
+  <link rel="preload" as="image" href="./assets/B_GqqMSt.png" media="not all" data-после-бандла>
+  <link rel="preload" as="image" href="./assets/CoD3hWU_.png" media="not all" data-после-бандла>
+  <script>
+    if (window.PerformanceObserver) new PerformanceObserver(function (список, наблюдатель) {
+      if (!список.getEntries().some(function (з) { return /\.js$/.test(з.name) })) return
+      наблюдатель.disconnect()
+      document.querySelectorAll('link[data-после-бандла]').forEach(function (с) { с.media = 'all' })
+    }).observe({ type: 'resource', buffered: true })
+  </script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #12131a; overflow: hidden; }
+    #игра { width: 100vw; height: 100vh; display: block; }
+    /* Игровое поле не тянется, не масштабируется пальцами и не выделяется долгим
+       касанием (задание 100, п. 1.6.1.8 и 1.10 требований): жесты — игре. */
+    #игра { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  </style>
+  </head>
+<body>
+  <!-- ЭКРАН ЗАГРУЗКИ (задание 073) — первым в body, до игры и до бандла:
+       браузер рисует его первым кадром. Сюда vite.config.js (плагин
+       «экран-загрузки») вклеивает src/загрузка/: шрифт-подмножество, краски,
+       разметку и загрузчик. Бандл подключает загрузчик, после кадра экрана. -->
+  <style>/* Порождено src/загрузка/собрать_шрифт.py — руками не править. Old Standard TT, OFL (game/art/шрифты/OFL.txt). */
+@font-face{font-family:'Крипт загрузка';font-weight:700;font-style:normal;font-display:block;src:url(data:font/woff2;base64,d09GMgABAAAAAB0kABEAAAAARHwAABzIAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGjobhBQcMAZgAIFwCIFCCZoWEQgK3iTUQQE2AiQDgUgLZgAEIAUGByAMgTEbBz5VRoWNA4CG7y6jKJmkQQT/fz6gQ4YtGgCnfjeGKIUK60pLISYNceFXL9H3uqx6sFI9L6ogX+HlOE7b0qh+4WjOyGMTZUXUnugvzt3i+Xsd+wJsbyvL3NaFmlOmDM8MxggW4RJevCIcYUSVAR98zssu77wznSau4BanjZBkFp7n66r+3KdQqrIq4Sg4i+juaAA5slazms8dAJX//H7u3c3PmaQRqiU6kUicWyTU/+q7FdEmlmiTBmlQ56SfSFi6zN2ddbvTwej8pcG35f9OQEIfR0bWEZLSOMjimv8dQq4juFya4piE+k59LQfCv+FxW28DegPBAKk9SqIlR44a1TITo2/iZXqdenc/2vid3YAABAJRhavhwXGoJ0r/BxQKhP/e+e3OL/OSdleYalAGSYWJ6EGuccD/o+0bUpRiaW54iM0gtjJYvoHveoJmvmxRU9TpqpPBzW+/3D3AIqaQlz3IGNUpWKSPrmxknSvo2H5rFAgORSh0Ltd2iMIA/eyMYoPWtdPuakEoMB/Az/bLR4U8Ew9l7Twt1ZXw/Zqpw/H3NtP2vZWJNqgAcNHsnUPYhZt69feW/uoEZK2OdSzTSiaZV1rdcYiwEphQNpeedEAlIHZxUaUoXbruU7RNiiYBE5azzbVlWoPV/xsUamr0WBqJ1VMYzIYrJEGmpcMWgp78+zac/xVmdjveCJCiQSqTL3oQBEghrMLjHStYVgj5xGbJsd0U1LJmhQbKikDIGMvoHbtiubKei+9cQWj7NReuKk2GAVhgEq6+dEWpzOcIx70MCl8Ppa61V6vk+ig/JcKDjRfgtu+0N3bpjSd4VQ/54Fp7564Xz8AHwGW9n1+z2/yJ+4WMJrf0GlPEKeGorJM3MCFCoTE4fEIiUqTJkEXQwl6CAo2w5mdxePgEhPTuZdFo1uG0EKBmgNVkWcP4aIfiFBJ7Hc9rlpjqt0bgvCjzut4Xnuy+yGFvcBtBgW8KZlc1Rxd5uilTpUadFjFCV57HCxbqwUm4AleTEHRHzpbrSlBrwCparCLWpC83tXHWNpO2Zv+m6WrJRl2p3osF9ZQ6A+y/fz9yHrNSB/CtA23q1ujIZYGhspcXD/6pf8vTb/VbpZqBKPJtVQ1sjJZyo/V0GhVKqufFmiXGkCdmkhW2spPdHOQIJ+jwit5+Z7pN2VRNbPpM21xkbop7scN/QRBVnMbtBxzgMMdsOazbxvvE6+v9z598yAd9wD3udpfb7LH2n/gP//nnP9kv8L//8y/4z73/ef0P0z+offsihOYkGS6EBnXUBxjKhKyi5NuwwcVb///zfXvj9/1846/y3BQoj2lOV7Cvbs4h1Y0hh1yOt93VcUs+eZav8uSbnfqmtuBknCTp7T8yR9/irj5F5rcZechHKifvUdb/90OPcmFz5z10YLuNBwTm0CAgzo4aFLQUH9yaSZ+GkVjmZDHBnUSPtrTzOXrzrpzZ58h59CQPTixzxiw/JFWlun7JSEvk8nPMNJ1WgA8adKTyVF6DUM0dGkNoyGEWYTEpp5Qc4sFgcCSueJM3aGgijPVLYbkVsRpwGpz3CckaDMyb17LaIghAHHc6R8hdGJPFOvTUD204VeK/N0av023GpO2Yt1y/k6Iln0RyFYk6H0U3eJrRAo+3BhRh4BTPFG+C/tCjiiOkRDLstMGDbI6PuPhnQjHqSJEkS60/j/v5+Ri8YeAk3PQ5gCA1J84QTRe3/twwljUp/bmWtPmoUTueeJuErDDaJp3joXoT6fEysI1YMkgRz7IP0aB5Er0zn256SkqjqsYJl0zXNWQQPRL7+EaPoxLTkEhz8RimJ2zIQuRik6R/JpSlP9/fk1nlAiUzCJYth7d7sZpqnC6vjqjth9LVadiOb3d3XuejrfvAeVSy2/eVbLFoJA9kPcF2lIWaYphORtZMaNsaJ1GcEGOhPLU/vD71ti7xnA4GyoHC0ZhIcUZaO7ppUpZJIhdb4ZSNEcLmQWI8vAG6cayS2rkXyWrQhEgDoWKyoIzkv7sWj4s5jkK54D/fCTzp25dSQw8q3bcaCqhyD0VGQYnRUGYMVBgLVcZBjfGgzvjQYILqURj9eXHZ271oapGXkcKHzmNC/Yt9frjj/Yf6/D6tmzjG4GFiC5sYo2AvCvahYD8KDqDgIAoOoeAwCo6g1LehrlxhIj7TlWlkdW2UUkUSbdds0iSYcCambq8pSDPrbEatX7OFMXMgdSTAtLgtLGtMTauNq5N4N3mqzRCUmVj9LPTIbXVu/gr4ZLAI4lZYPw5Q/ICZZvzM1upsbHv5pMxDnWaWh2G7/wQ1LKA91zUsyniQCcda8hKqCmtX1LoI9I+PltflqTOFWK84dwtssoZhMaZWT9+08cuAIjntNZYL4tkJeGtVJlXqyvJoKSsBtZhRjAaFiLhg9khOLuJPtX8ydkUsnRykMKOO9qnSr/Q4bZoxnJY0z2plr48sinlpaPZL76h6e0c0z2hpVVeqNwmTbNqvOcPnFGV3wdgVZjFqrWoTNCdDt9ZjWuEIJgWmmTUDLJfNmSaTTalhlY7DSMKmsHVrI/3X/PgwZarJ4CSLrnWI4JVIdDInYqvOvOvIu2sJmwqvM7HL65d8WRIty1vMGNUad226CFkQjzS/C6T1XUpzbDNMLZkrMiXHuOV2UlSX2joZW7emSm45647b6jnByFjxQW8Fyz7wtNvAipd4v6uzK1mWZeIwbJm0sN1PsUYhyYXMh7GdWltDT9yB6rcsSLRnMW8Vs/olwZC56t6drTlfKUGfXIWd1SzfokPdJfJH0NtKDEj2Hnc7CyPdNzCllVP9AfPTY7OnZS8qUvWyQHX7wNId9s+L4sTUalr6c8J8B1DKXvbX4iTwGIiuqyLIJk5ASOK5DOVJKVpTJyA08amOn0Q6jOE2cwrCcp7bcFmOLFeWJ89907QCWiGtiJ7HUEYJo5RRxixy98AL8BK8Aq/BG/AWvINDj0p2IhcDdzkmxAg7n6JfdnD7GRVQWyR8mbDVigQ66wg2EYttW57Z1WfbJ+yQ6I/XMDlFco7kEsm1bu2WsHuif+hh8YziFcU7ik/d2jdhv8TdHz9pXW+tPxBUWxQ9cOSO1/GLCQTZUJqrySz/XwLsB/8FCM8GHJCD4sWgnUIuKXO1fuRJ1+i1SvGwPM7o+vZZQxFL2UDT0qOF5u6wm/pmvZ6aSi0PhGmmL2qkUq35fz2lzcpA/HdaL1fLs9VcEOQyPTs3FzKLo42lZj07mk05kz+Q3/J/NZV5YKEjarn1x/pHHU1CqFax60YcXgFvRIMiK/5yKZZzavfNSVQu3TCA5WtwFOYxoqabC3V39DJC8QlVlrCVQkhSGTMoRaKrr6OgXWA4gXtiJBxO53FUnIdGO2W2tfwNxECrrtQhsMHT8+APVr5CSilHumwwx3AAydCa0RdG4cLWuNWAXWZIiEGuaBXxnVwqgwj06VW73iK1Oa8MqRGiY3b7LFeptzpcg+0SHfRnLUfPkjDJlsahvo5oi+7/NeFJIl1EnjCvnodoRUOheGlc0ZHsv3bgc4Vuc7Xr4SKjFImWVo0T+3jyGOYwYWODZSwjOtEAGPJje5xFU4v0hY7qX3xJD66my7iwNcVdHm+Fc6NUbubjlUPBkqV4W25DDWRDoWw2Mm0ss5TCwHJwe8HMpSRFwyqC1Xo+8JQDLfMspAWvBnx93Zw6i3o5VVWR/MswQaIugfY/wU2ZaPFNiLwzdCWxF25ksatA3m/+trTy6ppGkR6bH7VLKbatLqyJNCfRIiHWcO30bEF/bws4qXWphE10cOmhtZWSxlFxsemFcS4ttYGqrD+sNisRGI+RBbDrlHxbkQ9jqXyHsKjf/ur5SPmCBiUbBWzDBJw5va6hELoZE1gxuXe+srs0Jdo8alLLYrfJ/dcHwuI1sfMCRbwKHnTJdBAGFPTioEuWmaeFOKLnIpAhAzQwpPoZ9CoQfw9+gwMM9SolTugUIg7u8mf/OJvPYTLvfd9NsYCqNilr74ubaY4MfgMvRYqcYSs9l0pykNd/aN2o+8bxG0TLL1TMewq7weYuqsxlVtTiqNfrXcuxC1mZadUP9YPr5ZVhL/OB6G94BZuZUn9Jq+XBqLhiWK++zDSzd+PoAcCS5vqM34hHhwOyBo5k56xjJVQRLaC12qwF2IDFfWTaksjONV+pslwqVCuloYtAXNIggihKZiAb9Azkh7hV8W78dr1rjS7I1fqHZT9rPbuhqs1Ccla3ZOncgCHjROFQEBw0jOUm+9q1n6MHx0ABOw31pC+nc1DTqqUqjAsNwaeilN3u4XLkfqwV7L5drqF/dhagMCyeE/tjtdZw7I7Z9sTCzTfzTWPPG3i+8WtuwI2jz5QB7DMzlXubnql99SXafY0nl7bEBanczvbOTkS9o3K7cb1YOR7mGS3MH1NhorZi2yu13/9wYvlGaxeul9fIv9X9i+TaKFcOld0v5L9340tjild3VyhkoAhCSz6C6tJw8aXYApPxFFML/v+kf2cnY0stfXrMMz8w7JvfMpyXfCEt1ZHPIo0CA2jetmwmonV1DakGsW79WoR4hDIgVjbiZV9PeMP3vo9RZyGcOkPFwKrsPjx10chI6sr952ZWDcBoDs+r8jkc7YDmqDg0D8WlcrZVfw5IjVHN6L2S0tjCGw2ct9koDyCAz0bf5hhA+vudtIQLkjV1vlpQ3WCbJdO3DPvmh4eiC3subVd+YSnVQdNVAgALtxB7w04vPqp6oGT0FOz7qDNUHMSADpqjWgCzU34fhfHIrqSz7f+ddugpgM3p5G/I4ogQyIi2EgA5Vaq+UfVKafls0CI17zg3cBEaNsem1CM0HxuQDOb2x1iki9XPKMEfwJ9RN6/w7nF/f9vXu77+T3925NpN0qOAvnc8vVgsIl9eOh7nGZ5H8VHV6BVyOs+dE7a/8EMYoXHkzBZHntBhK1jQPISDgdyUUZGNhOUpUxSao4IigxmJRjbpNB691QjsBJD+p4if2NGbDgwlMxRSHMpm8CkFl83Mu0C/YcL3/uUmeRzzy30mJTRHrTqhoQdYA30OSpMnCVfbART17upNW5JIQMUOtb6671u0w9W/rDcbxPT9EMPcCSiVgOH3TeGoziRXIDjy2v790z0Go75n0B7++F44RZ2FEvV6ujY+wvBfMW0BSY6T5KB6+oq8Pz6ipevrE9A8lAJD3e/CKHUWenWudMfxggjYAJf68pL6rh38rk/eb2Gd5HLBH0CET927e8970DyEAn+h0M0xzccnVYKahuQPbe+xGi1myTqM0DvaLRYHThiwiU64OE8sHS+FziX5TdNnH1E6Y3pvfxpj1LyGq5Cw3ukuTKjQyfgOsyQW96hDsgiusWvQZMS6utBn6sbiEnNnkxSg+aFm75uulSFnldx+FxjO1eid+fHrl/irhp++fpm/8g2y8g6rG1G9SwVMX+x/zYClNVf0X+62wQ8sY4kfuLqRP8AW/QVlaYyWFhQMkqvjjHSuKK7G//HSPr4Oc2OdH0GtigD0cfkNjwC9OFPT4OLqqbjOnSb0AYA/ZkPKtgQmjEiXxWLrXGoKlHDYqOqORlQ9xlHrag8924OucI+aHF3mxzlm8g5o4RSIdBk/gnWK3nAYfboujbjCGu73XY/0OYUMyb2jmsYoCVR//kyz2Us1fz17boz+oxUYoXPkLWZHjtBgQznYJE+FI4qscXAJzTAz1ZsPbVnrW+6aLCL7/3FfJI+8SSOmbIuFwsmXlw6FeIYkSGmv0V4hieT8TyKxFg5RZyFRn1iiikgeih6F5qEQyIVpNE9YvI1BraehMq2U6rd0nw5hyVUBqzpqaQUC2c3FEpOd5im/NZqs+IDBUVo+lEWwriFvTHZ1NPyy3qFmyKthufgv3m4A7hQZQG/YhZy9KlvKheSEXLiaq3/5ivI6TkI9cWMWSSqHxYNaBRbtUnhVrZ3C5pdbJSwRXxJRtxmiuMw0vLGYCfZlvRDl47zOlGwbPDy+bvpUq486C518R1Lz+vibhJg4GcB/5BP67+d1hZdo7TItpoAfeIoJmtmyK9+CmWItIpwshmi5GWmD7bql7O2OV2PSXraZbkxcEuk+n154UxoYtVhH/WEfsRzx3fk9jSjaLu1fiV6/vj+r9bWqRUqOjO/na543O+saZyRWY9F3JPO/jjc0sLob0YwMeCK070ghNM0ekpiR49U+W5ekoFxfRvvTOWzj8XhH8cAls1+2yj68IJNbbVFxM0dc5dEj0QC8Le74Pwf4DPsh5pL/qNU64JFMyLy93LPtxmnxuk9pE0pvxuoOFz6umHCt8fp7JjRWL66XhUVtrvSVVfJF36DBgyxd7k6tflIdU8vPoXyhudtglSFg2lUz4wMBWNaw8sr06vMuFI20cyQdL9H86hyJxKhwh28uYbCTrR+vu1sovG5p+b/r9dVEZbtoQ+FyXruC5HIU6dIY81bE2NVlRPhCzOv3pnCzH37h0XjrpEAplnC17CZ5y+umuubHgd6HGBWe9GnMYoqY1cooCUSNxkyn2mKWOnW3C97XXOrbRiaD9Xjxins2c1bijyOf3vFHHmNC+vO8m2WCbYI8WXYz73k6/Z8X7TKQgTzC/uI/6WAfH6Eglv+D/hC0ytJfXw39FHXun/4hm/3B9P5NRj5G7rHlN3A4NywfcyNsnneO0L9SyM1CkOPSjhDkegZNDZ5iHq09yu7g1/5+SzgtMacOmEC0qhtrDkAMwUOpiWQSgz7f/Qxri9xFbpHFYjn3nNhTH/r/INdrNNlg4cXZDPot/x9EzC+/bxz9Z5I6PoWqYba/nBMQ+mmAZO9r/xs91LHo+pVI22UqBmXJu5OkqorbCImMS1pJN8xs4oQyPoihsG+MUmvecN9fZNIfMLOfKleFc5fApd6vNfTPnDm8fwySeRSJ58fO+kg8WHoOGGG4mxNoSV3SwosCZWvM8oo7cYQ5YWYRbiZ0LD3J9t1k2FYd0shxQXFz8E04A1t7MYxhyfnO1fds1PQshZbxUw7tCSCI7MeRkvbF4WQoq7KT/NxmvQqWQNIegONqrlBzEmhwyuIP13bmgxbbztkpa5E5Uyxn6etJ31+SMurVdrwnaVZvQo+b9nJ8rvtnzhzeQ8muumifi7XGdd+dTlIEFpifWc4CAqsEItK1as8/iOEgj9YekAffwNevRSr2IILnRQgpui94yQwltpPi3MbgAKtbGIEk1nBcN/o+WlgjK/rXNYMGnH2M5FsBORlKwk7Cqtuj5ytooZ9phCYWDLTZYmeAvhaqNCgI5i2PYE4Xa6U47U9aTGjdn5TCfHrRkhkKGYVJo1YlwBihAsldCbaxhPJCSbAAXCucXtBlAHfOd6fW1yDXFOQazVG3LbK8v309oX4YsW+WghGtowfWXpU8S1FOhlJwJ12NkcKRGRsY5dOWNNcnhhlD9Ku4iIfR9nESCG/SJ0QVZ+z+clb0OxPvQ/f1wPtLeF/JlAbHSA37hx5uLraYeyeV6aVgaX55WV3EJBP5gBXTzDUtl52YlfNmpgAHAfc43fdEi4K3hfcXklYyzxdZLhAR6iKESzQd26ytf2aunIL3q5AkOI/PIoDDx8V8IYWSMw8ssdgPURJuVJ0mezcCP48L1BAcU8JaASGna3ebGLojqM0xhr6y6nLKYvFJ9fbB16X0/6UR4mQo5LV4yBnBI+jMXsolx+Maj0Msdd6vjzSCNsMwtDSMUosMHSeoeKCROveQjOqpCcKTqkmCzmOYN9+fWJ3MKGjavV5mLfdCn4jWSL7fXt+UmuxWRtEHLXqlt1BDzSo8SclAIayiktKYm4xXC7fzW07GdmIXaPJKRRUDZ2Riv4bsmXzsO2f3ANCP9goORZDtOA1iIBpGDicyjZmo1vqC6G3IbQLBvOwZfPSl1cAIBqFjnyf0MFhq3c1cbn2qD06M08zkkGr6uGWAjkvwbL4ira9oQXBG3jRDfTMMm6yCsPKE9jHTqd6xoS+qaEIvmsgceavxll5+so64zBqsndEJsabvpiEcq7zv9MD0z80LGauLOMi9b+/unavL6yUT0qsTN0KGL7SSIxNHFq2lSGtrOoYe3TIoYzqeIs9Lb26T2TxbAVBB/lmPfNevm2teSJlHfV/xlPJMGGLsSiooGCnFFAjMeT06o533hLEclzN7OXJGJupNlKUWW1KRBXucvxqh5UW640eofISW8iYuFZcOSOlO7IdAlVRkQbljaB+tCUEcBIfg1fBqMxj7NsUyaWdVk+uIuzowIEAFY6K0WVwccNrqwu563j33j9lgoLdlhjs1KqVXOglQgEBKQ70zSCjNU75DLbfIWTwL7MLHQDyzc2+6yck8WxU5hU2aToQIn4kQSqalveSwKtYCxSQL8+9vJ+W5zfm4uW9v66UzDBKBuhTXy+vZPANlQdsUsPsY02/0a8oyoqA0GiLVSn+TVOntx+NRswf+thwVEG1xb4pkFFHWt9eI+EBMhXCys6TEPkQoyTvh7iuGSVxBuxN8ANlLnNmrhhj73M4s2T/u72Bjx/B1fhS2CwZz5RS4r8ROuoAd/PT0B3ZeUjlN9j2caYeFR5rEJtQgijLRGx844S16bT0F20zflrdR0naVv68WWJ5NrA9aheRUM9m3GzjEkY+q5hmUmcLaW5sZZPXGtuioqgggknFRS73SG/qL/koTA9NJ1uzZf0PxyBlUjVYozX3gdMF7MFhn7OUo1XTT9rPMtl4ppVXXva5Tlx/bR8n8YwbDAvMDbYp+q2nZv9lIWx2RIiRRHWHdOv2R5QLP6otz5nxPjJk1KkMF7hws5O+gTaNOMLrkDqvFjzj0Icdh/uXxV1gWqwNBlBUHUngo70AWlIVMg0REzPlOak0K3lqh1HG5EPIssjCsCGQSmsRXMDfeyptdR43iAe1Zvvbq7MwkGtTbzaN8i4W0coSKpUpeWaAM6nKs1cc2Ws+EzAV9pgp95izaQeulOshCO3ERkPOVlesARIQD2i+Mf3ynUNPzSyJKK/R9ISkP6RFKiV1kVGUEgXHSOjKfbrajX2sndsIfN2PQBlN+jHkFxIkVezHGqPNRas4cAPazb2VpHrTyXPCL46/M4lAnb5AVrSzZT2jCYh95UcYEK9QTnbHN6rE2Z9chagMhKL8ypaNb9b1ZpTvH4UpW1NVnMz0q1wYWLwwlIHjEinaiRKvLZzvwPmrhfF9ggQM14VLmaCdOebiZmy4f7i/Go299ifNgWIWKd9OG8xLYmhB5hgEkinOBszdAlBJu6JJUTsJ0KgxE+GaClpZLYf6EZjiKAmFEEMTTp9OZc/OSyZQXh9oLsr7i/i1nCt0X3Le6pyNS961wptQYmVttTviZZafLzVlhc6vYe5WSfXofnYCIILpkdCQf2m8P+YkTGGZbFZw4nSu057EslolHbTtXdyQuVljuNkqBMUoW6uNCAA3Zv99T52fX/yboXwJ85ecNDwP8/HeTmnjDhverbyN4KAAE/t3SY9pTA8hdD8LVys7KXztXyqD+XFs9zy6dZ7N6M6pflHAZXmrQdzGtPikPVO+HbxdU13CW+izr6odMqu/1UTarj8MTgmqfH5KedAN1G95POnJ/EP1LNss7K+ZZx9d3MIt4Bybly3w8gHvwPFwOb5OyiVMjjKgzWn1gNlInvq03bUYCXPNZbsEwj6BIOMrTITZdRMLfzqG9G7fuWF7Nef87+eSxMzeKPNe5Qf6vIf8NN+Jte9s5IWOcZYw316T2sL/mD/sFz/hfHKPjdroZ17QLi7a9r4csIfYBDAFDNkhyI7TZNTveNCBPHMVvSPaeEeESZshwl/8AYo7IxTlclHaqZcVqj/qb/FG/5JnU2Dtl4/uzb9pM4lvsJY4dOwA=) format('woff2')}
+@font-face{font-family:'Крипт загрузка';font-weight:400;font-style:normal;font-display:block;src:url(data:font/woff2;base64,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) format('woff2')}
+/* Экран загрузки (073) и экран перевода (069) — один лист.
+   Краски — game/art/чернила.json (Р1-К): бумага #f2ecdf, важное #16120e,
+   нарратив #4a443b, бледный #6b6357, управление #264a8a. Длительности — Р8
+   (150 / 300 / 600). Движется только transform и opacity: композитор, не
+   главный поток (расшифровка.js, шапка). */
+.рш {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background-color: #f2ecdf;
+  /* Бумага без картинки: тёплый свет к середине, лёгкое потемнение к краям и
+     зерно из встроенного SVG-шума — тот же лист, что тайл главного. */
+  background-image:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(255, 252, 244, 0.55), rgba(255, 252, 244, 0) 70%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, rgba(74, 68, 59, 0) 60%, rgba(74, 68, 59, 0.12) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='z'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .29 0 0 0 0 .27 0 0 0 0 .23 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23z)'/%3E%3C/svg%3E");
+  color: #16120e;
+  /* Первые кадры — системной антиквой: она не грузится. Встроенный шрифт
+     включает класс рш-шрифт, когда он уже загружен (загрузчик), — подмена
+     мгновенна, кадра без букв нет (font-display его не даёт: и block, и swap
+     прячут текст, пока шрифт декодируется, — кадры 073). */
+  font-family: Georgia, 'Times New Roman', serif;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 1;
+  transition: opacity 300ms ease-out;
+}
+.рш.рш-уходит { opacity: 0; pointer-events: none; }
+.рш.рш-набран .рш-лист { visibility: visible; }
+.рш.рш-шрифт { font-family: 'Крипт загрузка', Georgia, 'Times New Roman', serif; }
+.рш-лист {
+  /* Пустой набор не показывается: разметка листа приходит по сети раньше
+     встроенного скрипта, который её наполняет, и первый кадр иначе был бы
+     линейками без единой буквы (кадры 073). До наполнения — одна бумага. */
+  visibility: hidden;
+  box-sizing: border-box;
+  width: min(100vw, 62vh, 460px);
+  padding: 0 7.8%;
+  margin-top: -8vh;
+  text-align: center;
+}
+.рш-линейка { height: 3px; border-top: 2px solid #16120e; border-bottom: 1px solid #16120e; }
+.рш-линейка-низ { border-top-width: 1px; border-bottom-width: 2px; }
+.рш-над {
+  margin: 0.9em 0 0.15em;
+  font-weight: 400; font-size: min(4.4vw, 2.8vh, 20px);
+  letter-spacing: 0.55em; padding-left: 0.55em;
+  line-height: 1.15;
+}
+.рш-имя {
+  margin: 0 0 0.28em;
+  font-weight: 700; font-size: min(7.4vw, 4.7vh, 36px);
+  letter-spacing: 0.04em; padding-left: 0.04em;
+  line-height: 1.15;
+  white-space: nowrap;
+  /* Вдавленный набор, как шапка главного: светлый край снизу. */
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+/* Окно буквы: мера задаёт ширину, лента с перебором едет в окне шагами. */
+.рш-буква { position: relative; display: inline-block; overflow: hidden; height: 1.15em; vertical-align: top; }
+.рш-мера { visibility: hidden; }
+.рш-лента {
+  position: absolute; left: -0.5em; right: -0.5em; top: 0;
+  display: block;
+  animation-name: рш-перебор;
+  animation-timing-function: steps(6, end);
+  animation-fill-mode: both;
+  will-change: transform;
+}
+.рш-лента > span { display: block; height: 1.15em; }
+/* Лист без языка (074): портал ещё не назвал язык — на месте имени знаки
+   шифра, и перебор не кончается, пока имя не осядет на язык SDK. */
+.рш-без-языка .рш-лента { animation-iteration-count: infinite; }
+/* 6 знаков по 1.15em; последний кадр — буква (fill-mode: both держит его). */
+@keyframes рш-перебор { from { transform: translateY(0); } to { transform: translateY(-6.9em); } }
+
+.рш-подпись {
+  margin-top: 1.6em;
+  font-weight: 400; font-style: normal; font-size: min(4.2vw, 2.6vh, 18px);
+  color: #4a443b; line-height: 1.3;
+}
+.рш-точки i { font-style: normal; opacity: 0; animation: 1200ms step-end infinite; }
+/* Многоточие набирается: «», «.», «..», «...» — по 300 мс (Р8). */
+.рш-точки i:nth-child(1) { animation-name: рш-точка1; }
+.рш-точки i:nth-child(2) { animation-name: рш-точка2; }
+.рш-точки i:nth-child(3) { animation-name: рш-точка3; }
+@keyframes рш-точка1 { 0% { opacity: 0; } 25%, 100% { opacity: 1; } }
+@keyframes рш-точка2 { 0% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes рш-точка3 { 0% { opacity: 0; } 75%, 100% { opacity: 1; } }
+
+/* Бар — тонкая чернильная линия по сетке 046, не системный прогресс-бар:
+   бледная волосяная дорожка и плотная чернильная заливка поверх. Ширину
+   заливки двигает только transform (scaleX), с переходом — его тоже ведёт
+   композитор, и бар не встаёт вместе с разбором бандла. */
+.рш-полоса {
+  position: relative; overflow: hidden;
+  width: 64%; height: 2px; margin: 0.9em auto 0;
+  background: rgba(22, 18, 14, 0.16);
+}
+.рш-заливка {
+  position: absolute; inset: 0;
+  background: #16120e;
+  transform-origin: 0 50%; transform: scaleX(0);
+  will-change: transform;
+}
+/* Блик сырых чернил идёт по линии всё время загрузки: после того как имя
+   осело, это то, что движется, — экран не замирает и в долгую загрузку. */
+.рш-блик {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 28%;
+  background: linear-gradient(90deg, rgba(242, 236, 223, 0), rgba(242, 236, 223, 0.38), rgba(242, 236, 223, 0));
+  animation: рш-блик 1600ms linear infinite;
+  will-change: transform;
+}
+@keyframes рш-блик { from { transform: translateX(-100%); } to { transform: translateX(360%); } }
+
+.рш-ошибка { margin-top: 1.4em; }
+.рш-ошибка[hidden] { display: none; }
+.рш-ошибка-текст { margin: 0 0 1.1em; font-size: min(4.2vw, 2.6vh, 18px); color: #4a443b; line-height: 1.35; }
+/* Кнопка — синий штемпель управления (Р1-К): залитая плашка с бумажной
+   двойной линейкой внутри и жёсткой тенью. */
+.рш-кнопка {
+  font-family: inherit; font-weight: 700; font-size: min(4.4vw, 2.8vh, 18px);
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: #f2ecdf; background: #264a8a;
+  border: 0; border-radius: 3px; padding: 0.85em 1.8em 0.8em 1.96em;
+  box-shadow: inset 0 0 0 4px #264a8a, inset 0 0 0 5px #f2ecdf, 3px 4px 0 rgba(22, 18, 14, 0.28);
+  cursor: pointer;
+}
+.рш-кнопка:active { background: #1c3a70; box-shadow: inset 0 0 0 4px #1c3a70, inset 0 0 0 5px #f2ecdf, 1px 1px 0 rgba(22, 18, 14, 0.28); transform: translate(2px, 3px); }
+.рш.рш-сорвалась .рш-полоса, .рш.рш-сорвалась .рш-точки { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .рш-лента { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+}
+</style>
+<div id="загрузка" class="рш" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div class="рш-лист">
+    <div class="рш-линейка"></div>
+    <div class="рш-над"></div>
+    <div class="рш-имя"></div>
+    <div class="рш-линейка рш-линейка-низ"></div>
+    <div class="рш-подпись"><span class="рш-текст"></span><span class="рш-точки" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></div>
+    <div class="рш-полоса" aria-hidden="true"><div class="рш-заливка"></div><div class="рш-блик"></div></div>
+    <div class="рш-ошибка" hidden><p class="рш-ошибка-текст"></p><button type="button" class="рш-кнопка"></button></div>
+  </div>
+</div>
+<script>
+/** Языки, для которых Яндекс берёт резервным русский (сам ru — тоже). */
+var РШ_РУССКИЕ = ['ru', 'be', 'kk', 'uk', 'uz']
+
+/** Код языка портала → язык игры по таблице Яндекса; пусто → null. */
+function рш_язык (код) {
+  var к = String(код || '').split(/[-_]/)[0].trim().toLowerCase()
+  if (!к) return null
+  return РШ_РУССКИЕ.indexOf(к) >= 0 ? 'ru' : 'en'
+}
+
+
+
+
+function рш_портал () { return false }
+function рш_поднятьПортал () { return Promise.resolve(null) }
+function рш_кодПортала () { return null }
+/** Язык вне портала, когда игрок его ещё не выбирал: браузер, иначе en. */
+function рш_языкВне (W) {
+  var н = W.navigator || {}
+  return рш_язык(н.language || (н.languages || [])[0]) || 'en'
+}
+
+
+
+var ЗНАКИ = '1234567890§№†‡¶◊' + String.fromCharCode(0x462, 0x472, 0x406)
+var РАСШИФРОВКА = { знаков: 6, буква: 600, шаг: 45 }
+
+/** Детерминированный перебор: тот же кадр при каждом запуске (витрина, тест). */
+function рш_зерно (семя) {
+  var s = (семя >>> 0) || 1
+  return function () { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296 }
+}
+
+/**
+ * Набрать строку расшифровки в элемент. Пробел — пробел, буква — окно с
+ * лентой: знаков штук шифра, последней — сама буква. Возвращает время прохода
+ * в мс: когда осела последняя буква (задержка + длительность).
+ *   начало — задержка первой буквы, мс (вторая строка идёт вместе с первой).
+ */
+function рш_набрать (элемент, текст, семя, начало) {
+  var д = элемент.ownerDocument
+  var случай = рш_зерно(семя)
+  var р = РАСШИФРОВКА
+  var конец = 0
+  var н = 0
+  элемент.textContent = ''
+  for (var i = 0; i < текст.length; i++) {
+    var б = текст.charAt(i)
+    if (б === ' ') { элемент.appendChild(д.createTextNode(' ')); continue }
+    var окно = д.createElement('span')
+    окно.className = 'рш-буква'
+    var мера = д.createElement('span')
+    мера.className = 'рш-мера'
+    мера.textContent = б
+    var лента = д.createElement('span')
+    лента.className = 'рш-лента'
+    var прежний = ''
+    for (var к = 0; к < р.знаков; к++) {
+      var з
+      do { з = ЗНАКИ.charAt(Math.floor(случай() * ЗНАКИ.length)) } while (з === прежний)
+      прежний = з
+      var знак = д.createElement('span')
+      знак.textContent = з
+      лента.appendChild(знак)
+    }
+    var итог = д.createElement('span')
+    итог.textContent = б
+    лента.appendChild(итог)
+    var задержка = (начало || 0) + н * р.шаг
+    лента.style.animationDelay = задержка + 'ms'
+    лента.style.animationDuration = р.буква + 'ms'
+    окно.appendChild(мера)
+    окно.appendChild(лента)
+    элемент.appendChild(окно)
+    конец = Math.max(конец, задержка + р.буква)
+    н++
+  }
+  элемент.setAttribute('aria-label', текст)
+  return конец
+}
+
+/**
+ * Собрать лист экрана: строка над именем, имя, подпись. Разметка листа — в
+ * экран.html; здесь только наполнение. Возвращает время прохода анимации.
+ */
+function рш_лист (корень, строки) {
+  var над = корень.querySelector('.рш-над')
+  var имя = корень.querySelector('.рш-имя')
+  var подпись = корень.querySelector('.рш-текст')
+  var проход = Math.max(рш_набрать(над, строки.над, 7, 0), рш_набрать(имя, строки.имя, 13, 0))
+  подпись.textContent = строки.подпись
+  рш_вместить(имя)
+  return проход
+}
+
+/**
+ * Имя не шире листа на любом языке и любым шрифтом: кегль из CSS — потолок,
+ * дальше вниз по мере (одно чтение раскладки, дёшево). Зовётся при наборе и
+ * ещё раз, когда пришёл шрифт листа.
+ */
+function рш_вместить (имя) {
+  имя.style.fontSize = ''
+  var кегль = parseFloat(getComputedStyle(имя).fontSize)
+  var место = имя.clientWidth
+  if (место > 0 && имя.scrollWidth > место) имя.style.fontSize = Math.floor(кегль * место / имя.scrollWidth) + 'px'
+}
+
+
+
+(function () {
+  var D = document
+  var W = window
+  var корень = D.getElementById('загрузка')
+  if (!корень) return
+  var СТРОКИ = {"ru":{"над":"ДЕТЕКТИВНЫЕ","имя":"КРИПТОГРАММЫ","подпись":"Открываю архив","ошибка":"Архив не открылся: нет связи с сервером.","кнопка":"Обновить"},"en":{"над":"DETECTIVE","имя":"CRYPTOGRAMS","подпись":"Opening the case files","ошибка":"The case files did not open: no connection to the server.","кнопка":"Reload"}}
+  var БАНДЛ = {"js":"./assets/BPECfwze.js","css":"./assets/lBvzmTBJ.css"}
+
+  var КЛЮЧ = 'Криптограмма_progress_v1'
+  var ЖДАТЬ_SDK = 800
+  function параметр (имя) {
+    var м = new RegExp('[?&]' + encodeURIComponent(имя) + '=([^&#]*)').exec(location.search)
+    try { return м ? decodeURIComponent(м[1]) : null } catch (e) { return null }
+  }
+  function сохранённый () {
+    try { var с = JSON.parse(localStorage.getItem(КЛЮЧ) || '{}'); return с && с.язык } catch (e) { return null }
+  }
+  var журнал = []
+  var т0 = (W.performance && performance.now) ? function () { return Math.round(performance.now()) } : function () { return Date.now() }
+  var портал = рш_портал(W)
+  var язык = null
+  var откуда = null
+  var проход = 0
+  var поколение = 0
+  var ВСЕ_БУКВЫ = ЗНАКИ + СТРОКИ.ru.над + СТРОКИ.ru.имя + СТРОКИ.en.над + СТРОКИ.en.имя
+  корень.querySelector('.рш-кнопка').addEventListener('click', function () { location.reload() })
+
+  /** Лист без языка: на месте имени — знаки шифра, перебор не кончается. */
+  function безЯзыка () {
+    корень.classList.add('рш-без-языка')
+    var знаки = ''
+    var случай = рш_зерно(29)
+    for (var i = 0; i < СТРОКИ.ru.имя.length; i++) знаки += ЗНАКИ.charAt(Math.floor(случай() * ЗНАКИ.length))
+    корень.querySelector('.рш-над').textContent = ' '
+    рш_набрать(корень.querySelector('.рш-имя'), знаки, 13, 0)
+    корень.querySelector('.рш-имя').removeAttribute('aria-label')
+    корень.querySelector('.рш-текст').textContent = ''
+    рш_вместить(корень.querySelector('.рш-имя'))
+    журнал.push({ этап: 'без языка', т: т0() })
+  }
+
+  /**
+   * Осесть на язык: имя расшифровывается на нём, подпись и ошибка — его
+   * строками. Позднее слово SDK, несогласное с запасным языком, ставит язык
+   * SDK заново (игра пойдёт на языке SDK — лист не должен с ней разойтись).
+   */
+  function осесть (я, почему) {
+    if (!СТРОКИ[я]) я = 'ru'
+    if (язык === я || уходит) return
+    if (язык && почему !== 'sdk') return
+    язык = я
+    откуда = почему
+    поколение++
+    var с = СТРОКИ[я]
+    D.documentElement.lang = я
+    корень.setAttribute('lang', я)
+    корень.setAttribute('aria-label', с.подпись)
+    корень.classList.remove('рш-без-языка')
+    проход = рш_лист(корень, с)
+    корень.querySelector('.рш-ошибка-текст').textContent = с.ошибка
+    корень.querySelector('.рш-кнопка').textContent = с.кнопка
+    журнал.push({ этап: 'язык', т: т0(), язык: я, откуда: почему })
+    if (W.__загрузка) W.__загрузка.проход = проход
+    ждатьПрохода()
+  }
+
+  if (!портал) {
+    var кандидаты = [параметр('язык'), сохранённый()]
+    var найден = typeof рш_языкВне === 'function' ? рш_языкВне(W) : 'ru'
+    for (var i = 0; i < кандидаты.length; i++) {
+      var к = String(кандидаты[i] || '').slice(0, 2).toLowerCase()
+      if (к && СТРОКИ[к]) { найден = к; break }
+    }
+    осесть(найден, 'вне портала')
+  } else {
+    безЯзыка()
+    var запасной = function () { return рш_язык(параметр('lang')) || 'ru' }
+    рш_поднятьПортал(W).then(function (y) {
+      var я = y && рш_язык(рш_кодПортала(y))
+      журнал.push({ этап: 'sdk', т: т0(), язык: я || null })
+      if (я) осесть(я, 'sdk')
+      else осесть(запасной(), 'адрес')
+    })
+    setTimeout(function () { осесть(запасной(), 'потолок') }, ЖДАТЬ_SDK)
+  }
+  function шрифт () {
+    корень.classList.add('рш-шрифт')
+    рш_вместить(корень.querySelector('.рш-имя'))
+    журнал.push({ этап: 'шрифт', т: т0() })
+  }
+  if (D.fonts && D.fonts.load && W.Promise) {
+    Promise.all([D.fonts.load("700 20px 'Крипт загрузка'", ВСЕ_БУКВЫ), D.fonts.load("400 20px 'Крипт загрузка'", ВСЕ_БУКВЫ)])
+      .then(function (а) { if (а[0].length && а[1].length) шрифт() }, function () {})
+  } else setTimeout(шрифт, 0)
+  корень.classList.add('рш-набран')
+
+  var полоса = корень.querySelector('.рш-полоса')
+  var блик = корень.querySelector('.рш-блик')
+  var слои = [корень.querySelector('.рш-заливка')]
+  var ВЕХИ = { бандл: 0.55, движок: 0.72, сцена: 0.8, готово: 1 }
+  var ПОТОЛОК = { старт: 0.52, бандл: 0.7, движок: 0.79 }
+  var доля = 0
+  /** Насчитанная главным потоком заливка слоя: не больше нарисованной. */
+  function сейчас (с) {
+    var м = getComputedStyle(с).transform
+    var д = м && м !== 'none' ? parseFloat(м.slice(м.indexOf('(') + 1)) : 0
+    return д > 0 ? д : 0
+  }
+  /** Довести заливку до цели за мс. Цель ниже достигнутой — ничего: бар не откатывается. */
+  function довести (цель, мс) {
+    if (!(цель > доля)) return
+    var от = Math.min(доля, сейчас(слои[слои.length - 1]))
+    доля = Math.min(1, цель)
+    var слой = D.createElement('div')
+    слой.className = 'рш-заливка'
+    слой.style.transform = 'scaleX(' + от.toFixed(4) + ')'
+    полоса.insertBefore(слой, блик)
+    слои.push(слой)
+    void слой.getBoundingClientRect() // начало перехода — с «от», а не с нуля
+    слой.style.transition = 'transform ' + мс + 'ms cubic-bezier(0.2, 0.6, 0.35, 1)'
+    слой.style.transform = 'scaleX(' + доля.toFixed(4) + ')'
+    слой.addEventListener('transitionend', function () {
+      var i = слои.indexOf(слой)
+      for (var j = 0; j < i; j++) if (слои[j].parentNode) слои[j].parentNode.removeChild(слои[j])
+      if (i > 0) слои.splice(0, i)
+    })
+    корень.setAttribute('aria-valuenow', String(Math.round(доля * 100)))
+  }
+  var этапы = {}
+  /** Отметка настоящей работы. сцена — с долей загрузчика Phaser (0..1). */
+  function этап (имя, д) {
+    if (имя === 'сцена') {
+      var ц = ВЕХИ.сцена + (ВЕХИ.готово - 0.02 - ВЕХИ.сцена) * Math.max(0, Math.min(1, +д || 0))
+      if (!этапы.сцена) журнал.push({ этап: имя, т: т0() })
+      этапы.сцена = true
+      довести(ц, 150)
+      return
+    }
+    if (этапы[имя]) return
+    этапы[имя] = true
+    журнал.push({ этап: имя, т: т0() })
+    if (ПОТОЛОК[имя]) довести(ПОТОЛОК[имя], имя === 'бандл' ? 1600 : 1400)
+    else довести(ВЕХИ[имя], 150)
+  }
+
+  var играГотова = false
+  var прошла = false
+  var уходит = false
+  var ушёл = false
+  function уйти () {
+    if (!играГотова || !прошла || уходит || сорвалась) return
+    уходит = true
+    журнал.push({ этап: 'уход', т: т0() })
+    довести(1, 150)
+    корень.classList.add('рш-уходит')
+    var конец = function () {
+      if (ушёл) return
+      ушёл = true
+      журнал.push({ этап: 'ушёл', т: т0() })
+      if (корень.parentNode) корень.parentNode.removeChild(корень)
+    }
+    корень.addEventListener('transitionend', function (e) { if (e.target === корень) конец() })
+    setTimeout(конец, 450)
+  }
+  function ждатьПрохода () {
+    var моё = поколение
+    var лента = корень.querySelectorAll('.рш-лента')
+    var последняя = лента[лента.length - 1]
+    var анимации = последняя && последняя.getAnimations ? последняя.getAnimations() : []
+    var прошлаАнимация = function () {
+      if (прошла || моё !== поколение) return
+      прошла = true
+      журнал.push({ этап: 'проход', т: т0() })
+      уйти()
+    }
+    if (анимации.length && W.Promise) Promise.all(анимации.map(function (а) { return а.finished })).then(прошлаАнимация, прошлаАнимация)
+    else setTimeout(прошлаАнимация, проход)
+  }
+
+  var сорвалась = false
+  function сорвать (почему) {
+    if (сорвалась || уходит) return
+    if (!язык) осесть(рш_язык(параметр('lang')) || 'ru', 'срыв')
+    сорвалась = true
+    журнал.push({ этап: 'ошибка', т: т0(), почему: почему })
+    корень.classList.add('рш-сорвалась')
+    корень.querySelector('.рш-подпись').hidden = true
+    корень.querySelector('.рш-ошибка').hidden = false
+  }
+
+  var пущен = false
+  function пуск () {
+    if (пущен) return
+    пущен = true
+    журнал.push({ этап: 'пуск', т: т0() })
+    довести(ПОТОЛОК.старт, 4000)
+    if (!БАНДЛ) return // дев-сервер: main.js подключён своим тегом
+    if (БАНДЛ.один) {
+      дочитан(function () {
+        var текст = D.getElementById('бандл')
+        if (!текст || !D.getElementById('бандл-цел')) { сорвать('документ оборван'); return }
+        этап('бандл')
+        var м = D.createElement('script')
+        м.type = 'module'
+        м.textContent = текст.textContent
+        D.body.appendChild(м)
+      })
+      return
+    }
+    if (БАНДЛ.css) {
+      var л = D.createElement('link')
+      л.rel = 'stylesheet'
+      л.href = БАНДЛ.css
+      D.head.appendChild(л)
+    }
+    if (W.PerformanceObserver) {
+      try {
+        var н = new PerformanceObserver(function (список) {
+          if (список.getEntries().some(function (з) { return з.name.indexOf(БАНДЛ.js.replace(/^\.\//, '')) >= 0 })) { н.disconnect(); этап('бандл') }
+        })
+        н.observe({ type: 'resource', buffered: true })
+      } catch (e) { /* без отметки скачивания бар дождётся «движок» */ }
+    }
+    var скрипт = D.createElement('script')
+    скрипт.type = 'module'
+    скрипт.crossOrigin = ''
+    скрипт.src = БАНДЛ.js
+    скрипт.onerror = function () { сорвать('бандл не скачался') }
+    D.body.appendChild(скрипт)
+  }
+  function дочитан (ф) {
+    if (D.readyState !== 'loading') ф()
+    else D.addEventListener('DOMContentLoaded', ф)
+  }
+  if (W.requestAnimationFrame) requestAnimationFrame(function () { requestAnimationFrame(пуск) })
+  setTimeout(пуск, 300)
+
+  W.__загрузка = {
+    get язык () { return язык },
+    get откуда () { return откуда },
+    портал: портал,
+    проход: проход,
+    этап: этап,
+    готово: function () { if (играГотова) return; играГотова = true; этап('готово'); уйти() },
+    ушёл: function () { return ушёл },
+    журнал: function () { return журнал.slice() },
+  }
+})()
+</script>
+  <div id="игра"></div>
+</body>
+</html>
